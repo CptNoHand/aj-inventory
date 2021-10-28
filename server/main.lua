@@ -19,14 +19,43 @@ AddEventHandler('inventory:server:addTrunkItems', function(plate, items)
 	Trunks[plate].items = items
 end)
 
+local function recipeContains(recipe, fromItem)
+	for k, v in pairs(recipe.accept) do
+		if v == fromItem.name then
+			return true
+		end
+	end
+
+	return false
+end
+
 RegisterServerEvent("inventory:server:combineItem")
 AddEventHandler('inventory:server:combineItem', function(item, fromItem, toItem)
 	local src = source
 	local ply = QBCore.Functions.GetPlayer(src)
 
+	-- Check that inputs are not nil
+	-- Most commonly when abusing this exploit, this values are left as
+	if fromItem == nil  then return end
+	if toItem == nil then return end
+
+	-- Check that they have the items
+	local fromItem = ply.Functions.GetItemByName(fromItem)
+	local toItem = ply.Functions.GetItemByName(toItem)
+
+	if fromItem == nil  then return end
+	if toItem == nil then return end
+
+	-- Check the recipe is valid
+	local recipe = QBCore.Shared.Items[toItem.name].combinable
+
+	if recipe and recipe.reward ~= item then return end
+	if not recipeContains(recipe, fromItem) then return end
+
+	TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[item], 'add')
 	ply.Functions.AddItem(item, 1)
-	ply.Functions.RemoveItem(fromItem, 1)
-	ply.Functions.RemoveItem(toItem, 1)
+	ply.Functions.RemoveItem(fromItem.name, 1)
+	ply.Functions.RemoveItem(toItem.name, 1)
 end)
 
 RegisterServerEvent("inventory:server:CraftItems")
@@ -947,7 +976,7 @@ end
 -- Stash Items
 function GetStashItems(stashId)
 	local items = {}
-	local result = exports.oxmysql:fetchSync('SELECT items FROM stashitems WHERE stash = ?', {stashId})
+	local result = exports.oxmysql:executeSync('SELECT items FROM stashitems WHERE stash = ?', {stashId})
 	if result[1] ~= nil then 
 		if result[1].items ~= nil then
 			result[1].items = json.decode(result[1].items)
@@ -1080,7 +1109,7 @@ end
 -- Trunk items
 function GetOwnedVehicleItems(plate)
 	local items = {}
-	local result = exports.oxmysql:fetchSync('SELECT items FROM trunkitems WHERE plate = ?', {plate})
+	local result = exports.oxmysql:executeSync('SELECT items FROM trunkitems WHERE plate = ?', {plate})
 	if result[1] ~= nil then
 		if result[1].items ~= nil then
 			result[1].items = json.decode(result[1].items)
@@ -1201,7 +1230,7 @@ end
 -- Glovebox items
 function GetOwnedVehicleGloveboxItems(plate)
 	local items = {}
-	local result = exports.oxmysql:fetchSync('SELECT items FROM gloveboxitems WHERE plate = ?', {plate})
+	local result = exports.oxmysql:executeSync('SELECT items FROM gloveboxitems WHERE plate = ?', {plate})
 	if result[1] ~= nil then 
 		if result[1].items ~= nil then
 			result[1].items = json.decode(result[1].items)
@@ -1470,6 +1499,10 @@ QBCore.Commands.Add("giveitem", "Give An Item (Admin Only)", {{name="id", help="
 				        info.lastname = Player.PlayerData.charinfo.lastname
 				        info.birthdate = Player.PlayerData.charinfo.birthdate
 				        info.type = "Class C Driver License"
+				elseif itemData["name"] == "weaponlicense" then
+					info.firstname = Player.PlayerData.charinfo.firstname
+					info.lastname = Player.PlayerData.charinfo.lastname
+					info.birthdate = Player.PlayerData.charinfo.birthdate
 				elseif itemData["type"] == "weapon" then
 					amount = 1
 					info.serie = tostring(Config.RandomInt(2) .. Config.RandomStr(3) .. Config.RandomInt(1) .. Config.RandomStr(2) .. Config.RandomInt(3) .. Config.RandomStr(4))
@@ -1527,3 +1560,53 @@ QBCore.Functions.CreateUseableItem("snowball", function(source, item)
         TriggerClientEvent("inventory:client:UseSnowball", source, itemData.amount)
     end
 end)
+
+if Config.NormalIDCard then
+	QBCore.Functions.CreateUseableItem("driver_license", function(source, item)
+		for k, v in pairs(QBCore.Functions.GetPlayers()) do
+			local PlayerPed = GetPlayerPed(source)
+			local TargetPed = GetPlayerPed(v)
+			local dist = #(GetEntityCoords(PlayerPed) - GetEntityCoords(TargetPed))
+			if dist < 3.0 then
+				TriggerClientEvent('chat:addMessage', v,  {
+						template = '<div class="chat-message advert"><div class="chat-message-body"><strong>{0}:</strong><br><br> <strong>First Name:</strong> {1} <br><strong>Last Name:</strong> {2} <br><strong>Birth Date:</strong> {3} <br><strong>Licenses:</strong> {4}</div></div>',
+						args = {
+							"Drivers License",
+							item.info.firstname,
+							item.info.lastname,
+							item.info.birthdate,
+							item.info.type
+						}
+					}
+				)
+			end
+		end
+	end)
+
+	QBCore.Functions.CreateUseableItem("id_card", function(source, item)
+		for k, v in pairs(QBCore.Functions.GetPlayers()) do
+			local PlayerPed = GetPlayerPed(source)
+			local TargetPed = GetPlayerPed(v)
+			local dist = #(GetEntityCoords(PlayerPed) - GetEntityCoords(TargetPed))
+			if dist < 3.0 then
+				local gender = "Man"
+				if item.info.gender == 1 then
+					gender = "Woman"
+				end
+				TriggerClientEvent('chat:addMessage', v,  {
+						template = '<div class="chat-message advert"><div class="chat-message-body"><strong>{0}:</strong><br><br> <strong>Civ ID:</strong> {1} <br><strong>First Name:</strong> {2} <br><strong>Last Name:</strong> {3} <br><strong>Birthdate:</strong> {4} <br><strong>Gender:</strong> {5} <br><strong>Nationality:</strong> {6}</div></div>',
+						args = {
+							"ID Card",
+							item.info.citizenid,
+							item.info.firstname,
+							item.info.lastname,
+							item.info.birthdate,
+							gender,
+							item.info.nationality
+						}
+					}
+				)
+			end
+		end
+	end)
+end

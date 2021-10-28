@@ -153,7 +153,7 @@ RegisterCommand('inventory', function()
                                 curVeh = vehicle
                                 CurrentGlovebox = nil
                             else
-                                QBCore.Functions.Notify("Vehicle is locked..", "error")
+                                QBCore.Functions.Notify("Vehicle Locked", "error")
                                 return
                             end
                         else
@@ -210,7 +210,11 @@ RegisterKeyMapping('inventory', 'Open Inventory', 'keyboard', 'i')
 
 RegisterCommand('hotbar', function()
     isHotbar = not isHotbar
-    ToggleHotbar(isHotbar)
+	QBCore.Functions.GetPlayerData(function(PlayerData)
+        if not PlayerData.metadata["isdead"] and not PlayerData.metadata["inlaststand"] and not PlayerData.metadata["ishandcuffed"] and not IsPauseMenuActive() then
+			ToggleHotbar(isHotbar)
+		end
+	end)
 end)
 RegisterKeyMapping('hotbar', 'Toggles keybind slots', 'keyboard', 'z')
 
@@ -422,7 +426,7 @@ AddEventHandler("inventory:client:CraftItems", function(itemName, itemCosts, amo
         isCrafting = false
 	end, function() -- Cancel
 		StopAnimTask(ped, "mini@repair", "fixing_a_player", 1.0)
-        QBCore.Functions.Notify("Failed!", "error")
+        QBCore.Functions.Notify("Failed", "error")
         isCrafting = false
 	end)
 end)
@@ -450,7 +454,7 @@ AddEventHandler('inventory:client:CraftAttachment', function(itemName, itemCosts
         isCrafting = false
 	end, function() -- Cancel
 		StopAnimTask(ped, "mini@repair", "fixing_a_player", 1.0)
-        QBCore.Functions.Notify("Failed!", "error")
+        QBCore.Functions.Notify("Failed", "error")
         isCrafting = false
 	end)
 end)
@@ -471,7 +475,7 @@ AddEventHandler("inventory:client:PickupSnowballs", function()
         TriggerEvent('inventory:client:ItemBox', QBCore.Shared.Items["snowball"], "add")
     end, function() -- Cancel
         ClearPedTasks(ped)
-        QBCore.Functions.Notify("Canceled..", "error")
+        QBCore.Functions.Notify("Canceled", "error")
     end)
 end)
 
@@ -674,7 +678,6 @@ end)
 RegisterNUICallback("combineItem", function(data)
     Citizen.Wait(150)
     TriggerServerEvent('inventory:server:combineItem', data.reward, data.fromItem, data.toItem)
-    TriggerEvent('inventory:client:ItemBox', QBCore.Shared.Items[data.reward], 'add')
 end)
 
 RegisterNUICallback('combineWithAnim', function(data)
@@ -697,10 +700,9 @@ RegisterNUICallback('combineWithAnim', function(data)
     }, {}, {}, function() -- Done
         StopAnimTask(ped, aDict, aLib, 1.0)
         TriggerServerEvent('inventory:server:combineItem', combineData.reward, data.requiredItem, data.usedItem)
-        TriggerEvent('inventory:client:ItemBox', QBCore.Shared.Items[combineData.reward], 'add')
     end, function() -- Cancel
         StopAnimTask(ped, aDict, aLib, 1.0)
-        QBCore.Functions.Notify("Failed!", "error")
+        QBCore.Functions.Notify("Failed", "error")
     end)
 end)
 
