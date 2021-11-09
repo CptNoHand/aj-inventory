@@ -742,7 +742,12 @@ function swap($fromSlot, $toSlot, $fromInv, $toInv, $toAmount) {
         }
     } 
 
-    if (fromData !== undefined && fromData.amount >= $toAmount) {       
+    if (fromData !== undefined && fromData.amount >= $toAmount) { 
+        if (fromData.unique && $toAmount > 1) {
+            InventoryError($fromInv, $fromSlot);
+            return;
+        }
+              
         if (($fromInv.attr("data-inventory") == "player" || $fromInv.attr("data-inventory") == "hotbar") && $toInv.attr("data-inventory").split("-")[0] == "itemshop" && $toInv.attr("data-inventory") == "crafting") {
             InventoryError($fromInv, $fromSlot);
             return;

@@ -1,7 +1,6 @@
-local inInventory = false
-local hotbarOpen = false
+local QBCore = exports['qb-core']:GetCoreObject()
 
-local inventoryTest = {}
+local inInventory = false
 local currentWeapon = nil
 local CurrentWeaponData = {}
 local currentOtherInventory = nil
@@ -15,19 +14,15 @@ local isCrafting = false
 local isHotbar = false
 local showTrunkPos = false
 
-
-RegisterNetEvent('QBCore:Client:OnPlayerLoaded')
-AddEventHandler('QBCore:Client:OnPlayerLoaded', function()
+RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
     LocalPlayer.state:set("inv_busy", false, true)
 end)
 
-RegisterNetEvent("QBCore:Client:OnPlayerUnload")
-AddEventHandler("QBCore:Client:OnPlayerUnload", function()
+RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
     LocalPlayer.state:set("inv_busy", true, true)
 end)
 
-RegisterNetEvent('inventory:client:CheckOpenState')
-AddEventHandler('inventory:client:CheckOpenState', function(type, id, label)
+RegisterNetEvent('inventory:client:CheckOpenState', function(type, id, label)
     local name = QBCore.Shared.SplitStr(label, "-")[2]
     if type == "stash" then
         if name ~= CurrentStash or CurrentStash == nil then
@@ -44,8 +39,7 @@ AddEventHandler('inventory:client:CheckOpenState', function(type, id, label)
     end
 end)
 
-RegisterNetEvent('weapons:client:SetCurrentWeapon')
-AddEventHandler('weapons:client:SetCurrentWeapon', function(data, bool)
+RegisterNetEvent('weapons:client:SetCurrentWeapon', function(data, bool)
     if data ~= false then
         CurrentWeaponData = data
     else
@@ -91,9 +85,9 @@ AddEventHandler('randPickupAnim', function()
     ClearPedTasks(PlayerPedId())
 end)
 
-Citizen.CreateThread(function()
+CreateThread(function()
     while true do
-        Citizen.Wait(7)
+        Wait(7)
         if showTrunkPos and not inInventory then
             local vehicle = QBCore.Functions.GetClosestVehicle()
             if vehicle ~= 0 and vehicle ~= nil then
@@ -107,7 +101,7 @@ Citizen.CreateThread(function()
                     end
                     DrawText3Ds(drawpos.x, drawpos.y, drawpos.z, "Trunk")
                     if #(pos - drawpos) < 2.0 and not IsPedInAnyVehicle(ped) then
-                        CurrentVehicle = GetVehicleNumberPlateText(vehicle)
+                        CurrentVehicle = QBCore.Functions.GetPlate(vehicle)
                         showTrunkPos = false
                     end
                 else
@@ -118,7 +112,7 @@ Citizen.CreateThread(function()
     end
 end)
 
--- CloseInventory very rare if scuff 
+-- CloseInventory very rare if scuff
 RegisterCommand('closeinv', function()
     closeInventory()
 end, false)
@@ -136,7 +130,7 @@ RegisterCommand('inventory', function()
 
                 if IsPedInAnyVehicle(ped) then
                     local vehicle = GetVehiclePedIsIn(ped, false)
-                    CurrentGlovebox = GetVehicleNumberPlateText(vehicle)
+                    CurrentGlovebox = QBCore.Functions.GetPlate(vehicle)
                     curVeh = vehicle
                     CurrentVehicle = nil
                 else
@@ -149,7 +143,7 @@ RegisterCommand('inventory', function()
                         end
                         if #(pos - trunkpos) < 2.0 and not IsPedInAnyVehicle(ped) then
                             if GetVehicleDoorLockStatus(vehicle) < 2 then
-                                CurrentVehicle = GetVehicleNumberPlateText(vehicle)
+                                CurrentVehicle = QBCore.Functions.GetPlate(vehicle)
                                 curVeh = vehicle
                                 CurrentGlovebox = nil
                             else
@@ -166,6 +160,7 @@ RegisterCommand('inventory', function()
 
                 -- Trunk
                 if CurrentVehicle ~= nil then
+                    local vehicleClass = GetVehicleClass(curVeh)
                     local maxweight = 0
                     local slots = 0
                     -- GRAB WEIGHT AND SLOTS FROM SHARED LUA
@@ -201,7 +196,7 @@ RegisterCommand('inventory', function()
                 else
                     TriggerServerEvent("inventory:server:OpenInventory")
                 end
-            end    
+            end
         end)
     end
 end)
@@ -216,13 +211,14 @@ RegisterCommand('hotbar', function()
 		end
 	end)
 end)
+
 RegisterKeyMapping('hotbar', 'Toggles keybind slots', 'keyboard', 'z')
 
-for i=1, 6 do 
+for i=1, 6 do
     RegisterCommand('slot' .. i,function()
         QBCore.Functions.GetPlayerData(function(PlayerData)
             if not PlayerData.metadata["isdead"] and not PlayerData.metadata["inlaststand"] and not PlayerData.metadata["ishandcuffed"] and not IsPauseMenuActive() then
-                if i == 6 then 
+                if i == 6 then
                     i = MaxInventorySlots
                 end
                 TriggerServerEvent("inventory:server:UseItemSlot", i)
@@ -232,8 +228,7 @@ for i=1, 6 do
     RegisterKeyMapping('slot' .. i, 'Uses the item in slot ' .. i, 'keyboard', i)
 end
 
-RegisterNetEvent('inventory:client:ItemBox')
-AddEventHandler('inventory:client:ItemBox', function(itemData, type)
+RegisterNetEvent('inventory:client:ItemBox', function(itemData, type)
     SendNUIMessage({
         action = "itemBox",
         item = itemData,
@@ -241,19 +236,19 @@ AddEventHandler('inventory:client:ItemBox', function(itemData, type)
     })
 end)
 
-RegisterNetEvent('inventory:client:requiredItems')
-AddEventHandler('inventory:client:requiredItems', function(items, bool)
+
+RegisterNetEvent('inventory:client:requiredItems', function(items, bool)
     local itemTable = {}
     if bool then
         for k, v in pairs(items) do
-            table.insert(itemTable, {
+            itemTable[#itemTable+1] = {
                 item = items[k].name,
                 label = QBCore.Shared.Items[items[k].name]["label"],
                 image = items[k].image,
-            })
+            }
         end
     end
-    
+
     SendNUIMessage({
         action = "requiredItem",
         items = itemTable,
@@ -261,9 +256,9 @@ AddEventHandler('inventory:client:requiredItems', function(items, bool)
     })
 end)
 
-Citizen.CreateThread(function()
+CreateThread(function()
     while true do
-        Citizen.Wait(1)
+        Wait(1)
         if DropsNear ~= nil then
             for k, v in pairs(DropsNear) do
                 if DropsNear[k] ~= nil then
@@ -274,7 +269,7 @@ Citizen.CreateThread(function()
     end
 end)
 
-Citizen.CreateThread(function()
+CreateThread(function()
     while true do
         if Drops ~= nil and next(Drops) ~= nil then
             local pos = GetEntityCoords(PlayerPedId(), true)
@@ -296,12 +291,11 @@ Citizen.CreateThread(function()
         else
             DropsNear = {}
         end
-        Citizen.Wait(500)
+        Wait(500)
     end
 end)
 
-RegisterNetEvent('inventory:server:RobPlayer')
-AddEventHandler('inventory:server:RobPlayer', function(TargetId)
+RegisterNetEvent('inventory:server:RobPlayer', function(TargetId)
     SendNUIMessage({
         action = "RobMoney",
         TargetId = TargetId,
@@ -316,11 +310,9 @@ RegisterNUICallback('Notify', function(data, cb)
     QBCore.Functions.Notify(data.message, data.type)
 end)
 
-RegisterNetEvent("inventory:client:OpenInventory")
-AddEventHandler("inventory:client:OpenInventory", function(PlayerAmmo, inventory, other)
+RegisterNetEvent('inventory:client:OpenInventory', function(PlayerAmmo, inventory, other)
     if not IsEntityDead(PlayerPedId()) then
         ToggleHotbar(false)
-        TriggerEvent('randPickupAnim')
         SetNuiFocus(true, true)
         if other ~= nil then
             currentOtherInventory = other.name
@@ -387,13 +379,11 @@ RegisterNUICallback("GiveItem", function(data, cb)
     end
 end)
 
-RegisterNetEvent("inventory:client:ShowTrunkPos")
-AddEventHandler("inventory:client:ShowTrunkPos", function()
+RegisterNetEvent('inventory:client:ShowTrunkPos', function()
     showTrunkPos = true
 end)
 
-RegisterNetEvent("inventory:client:UpdatePlayerInventory")
-AddEventHandler("inventory:client:UpdatePlayerInventory", function(isError)
+RegisterNetEvent('inventory:client:UpdatePlayerInventory', function(isError)
     SendNUIMessage({
         action = "update",
         inventory = QBCore.Functions.GetPlayerData().items,
@@ -403,8 +393,7 @@ AddEventHandler("inventory:client:UpdatePlayerInventory", function(isError)
     })
 end)
 
-RegisterNetEvent("inventory:client:CraftItems")
-AddEventHandler("inventory:client:CraftItems", function(itemName, itemCosts, amount, toSlot, points)
+RegisterNetEvent('inventory:client:CraftItems', function(itemName, itemCosts, amount, toSlot, points)
     local ped = PlayerPedId()
     SendNUIMessage({
         action = "close",
@@ -431,8 +420,7 @@ AddEventHandler("inventory:client:CraftItems", function(itemName, itemCosts, amo
 	end)
 end)
 
-RegisterNetEvent('inventory:client:CraftAttachment')
-AddEventHandler('inventory:client:CraftAttachment', function(itemName, itemCosts, amount, toSlot, points)
+RegisterNetEvent('inventory:client:CraftAttachment', function(itemName, itemCosts, amount, toSlot, points)
     local ped = PlayerPedId()
     SendNUIMessage({
         action = "close",
@@ -459,8 +447,7 @@ AddEventHandler('inventory:client:CraftAttachment', function(itemName, itemCosts
 	end)
 end)
 
-RegisterNetEvent("inventory:client:PickupSnowballs")
-AddEventHandler("inventory:client:PickupSnowballs", function()
+RegisterNetEvent('inventory:client:PickupSnowballs', function()
     local ped = PlayerPedId()
     LoadAnimDict('anim@mp_snowball')
     TaskPlayAnim(ped, 'anim@mp_snowball', 'pickup_snowball', 3.0, 3.0, -1, 0, 1, 0, 0, 0)
@@ -479,20 +466,18 @@ AddEventHandler("inventory:client:PickupSnowballs", function()
     end)
 end)
 
-RegisterNetEvent("inventory:client:UseSnowball")
-AddEventHandler("inventory:client:UseSnowball", function(amount)
+RegisterNetEvent('inventory:client:UseSnowball', function(amount)
     local ped = PlayerPedId()
-    GiveWeaponToPed(ped, GetHashKey("weapon_snowball"), amount, false, false)
-    SetPedAmmo(ped, GetHashKey("weapon_snowball"), amount)
-    SetCurrentPedWeapon(ped, GetHashKey("weapon_snowball"), true)
+    GiveWeaponToPed(ped, `weapon_snowball`, amount, false, false)
+    SetPedAmmo(ped, `weapon_snowball`, amount)
+    SetCurrentPedWeapon(ped, `weapon_snowball`, true)
 end)
 
-RegisterNetEvent("inventory:client:UseWeapon")
-AddEventHandler("inventory:client:UseWeapon", function(weaponData, shootbool)
+RegisterNetEvent('inventory:client:UseWeapon', function(weaponData, shootbool)
     local ped = PlayerPedId()
     local weaponName = tostring(weaponData.name)
     if currentWeapon == weaponName then
-        SetCurrentPedWeapon(ped, GetHashKey("WEAPON_UNARMED"), true)
+        SetCurrentPedWeapon(ped, `WEAPON_UNARMED`, true)
         RemoveAllPedWeapons(ped, true)
         TriggerEvent('weapons:client:SetCurrentWeapon', nil, shootbool)
         currentWeapon = nil
@@ -514,8 +499,8 @@ AddEventHandler("inventory:client:UseWeapon", function(weaponData, shootbool)
         TriggerEvent('weapons:client:SetCurrentWeapon', weaponData, shootbool)
         QBCore.Functions.TriggerCallback("weapon:server:GetWeaponAmmo", function(result)
             local ammo = tonumber(result)
-            if weaponName == "weapon_petrolcan" or weaponName == "weapon_fireextinguisher" then 
-                ammo = 4000 
+            if weaponName == "weapon_petrolcan" or weaponName == "weapon_fireextinguisher" then
+                ammo = 4000
             end
             GiveWeaponToPed(ped, GetHashKey(weaponName), 0, false, false)
             SetPedAmmo(ped, GetHashKey(weaponName), ammo)
@@ -538,10 +523,10 @@ function FormatWeaponAttachments(itemdata)
             if WeaponAttachments[itemdata.name] ~= nil then
                 for key, value in pairs(WeaponAttachments[itemdata.name]) do
                     if value.component == v.component then
-                        table.insert(attachments, {
+                        attachments[#attachments+1] = {
                             attachment = key,
                             label = value.label
-                        })
+                        }
                     end
                 end
             end
@@ -562,7 +547,7 @@ RegisterNUICallback('RemoveAttachment', function(data, cb)
     local ped = PlayerPedId()
     local WeaponData = QBCore.Shared.Items[data.WeaponData.name]
     local Attachment = WeaponAttachments[WeaponData.name:upper()][data.AttachmentData.attachment]
-    
+
     QBCore.Functions.TriggerCallback('weapons:server:RemoveAttachment', function(NewAttachments)
         if NewAttachments ~= false then
             local Attachies = {}
@@ -570,10 +555,10 @@ RegisterNUICallback('RemoveAttachment', function(data, cb)
             for k, v in pairs(NewAttachments) do
                 for wep, pew in pairs(WeaponAttachments[WeaponData.name:upper()]) do
                     if v.component == pew.component then
-                        table.insert(Attachies, {
+                        Attachies[#Attachies+1] = {
                             attachment = pew.item,
                             label = pew.label,
-                        })
+                        }
                     end
                 end
             end
@@ -589,19 +574,17 @@ RegisterNUICallback('RemoveAttachment', function(data, cb)
     end, data.AttachmentData, data.WeaponData)
 end)
 
-RegisterNetEvent("inventory:client:CheckWeapon")
-AddEventHandler("inventory:client:CheckWeapon", function(weaponName)
+RegisterNetEvent('inventory:client:CheckWeapon', function(weaponName)
     local ped = PlayerPedId()
-    if currentWeapon == weaponName then 
+    if currentWeapon == weaponName then
         TriggerEvent('weapons:ResetHolster')
-        SetCurrentPedWeapon(ped, GetHashKey("WEAPON_UNARMED"), true)
+        SetCurrentPedWeapon(ped, `WEAPON_UNARMED`, true)
         RemoveAllPedWeapons(ped, true)
         currentWeapon = nil
     end
 end)
 
-RegisterNetEvent("inventory:client:AddDropItem")
-AddEventHandler("inventory:client:AddDropItem", function(dropId, player, coords)
+RegisterNetEvent('inventory:client:AddDropItem', function(dropId, player, coords)
     local forward = GetEntityForwardVector(GetPlayerPed(GetPlayerFromServerId(player)))
 	local x, y, z = table.unpack(coords + forward * 0.5)
     Drops[dropId] = {
@@ -614,28 +597,26 @@ AddEventHandler("inventory:client:AddDropItem", function(dropId, player, coords)
     }
 end)
 
-RegisterNetEvent("inventory:client:RemoveDropItem")
-AddEventHandler("inventory:client:RemoveDropItem", function(dropId)
+RegisterNetEvent('inventory:client:RemoveDropItem', function(dropId)
     Drops[dropId] = nil
+    DropsNear[dropId] = nil
 end)
 
-RegisterNetEvent("inventory:client:DropItemAnim")
-AddEventHandler("inventory:client:DropItemAnim", function()
+RegisterNetEvent('inventory:client:DropItemAnim', function()
     local ped = PlayerPedId()
     SendNUIMessage({
         action = "close",
     })
     RequestAnimDict("pickup_object")
     while not HasAnimDictLoaded("pickup_object") do
-        Citizen.Wait(7)
+        Wait(7)
     end
     TaskPlayAnim(ped, "pickup_object" ,"pickup_low" ,8.0, -8.0, -1, 1, 0, false, false, false )
-    Citizen.Wait(2000)
+    Wait(2000)
     ClearPedTasks(ped)
 end)
 
-RegisterNetEvent("inventory:client:SetCurrentStash")
-AddEventHandler("inventory:client:SetCurrentStash", function(stash)
+RegisterNetEvent('inventory:client:SetCurrentStash', function(stash)
     CurrentStash = stash
 end)
 
@@ -676,7 +657,7 @@ RegisterNUICallback("UseItem", function(data, cb)
 end)
 
 RegisterNUICallback("combineItem", function(data)
-    Citizen.Wait(150)
+    Wait(150)
     TriggerServerEvent('inventory:server:combineItem', data.reward, data.fromItem, data.toItem)
 end)
 
@@ -702,7 +683,7 @@ RegisterNUICallback('combineWithAnim', function(data)
         TriggerServerEvent('inventory:server:combineItem', combineData.reward, data.requiredItem, data.usedItem)
     end, function() -- Cancel
         StopAnimTask(ped, aDict, aLib, 1.0)
-        QBCore.Functions.Notify("Failed", "error")
+        QBCore.Functions.Notify("Failed!", "error")
     end)
 end)
 
@@ -722,7 +703,7 @@ function OpenTrunk()
     local vehicle = QBCore.Functions.GetClosestVehicle()
     while (not HasAnimDictLoaded("amb@prop_human_bum_bin@idle_b")) do
         RequestAnimDict("amb@prop_human_bum_bin@idle_b")
-        Citizen.Wait(100)
+        Wait(100)
     end
     TaskPlayAnim(PlayerPedId(), "amb@prop_human_bum_bin@idle_b", "idle_d", 4.0, 4.0, -1, 50, 0, false, false, false)
     if (IsBackEngine(GetEntityModel(vehicle))) then
@@ -736,7 +717,7 @@ function CloseTrunk()
     local vehicle = QBCore.Functions.GetClosestVehicle()
     while (not HasAnimDictLoaded("amb@prop_human_bum_bin@idle_b")) do
         RequestAnimDict("amb@prop_human_bum_bin@idle_b")
-        Citizen.Wait(100)
+        Wait(100)
     end
     TaskPlayAnim(PlayerPedId(), "amb@prop_human_bum_bin@idle_b", "exit", 4.0, 4.0, -1, 50, 0, false, false, false)
     if (IsBackEngine(GetEntityModel(vehicle))) then
@@ -769,7 +750,7 @@ function ToggleHotbar(toggle)
         [4] = QBCore.Functions.GetPlayerData().items[4],
         [5] = QBCore.Functions.GetPlayerData().items[5],
         [41] = QBCore.Functions.GetPlayerData().items[41],
-    } 
+    }
 
     if toggle then
         SendNUIMessage({
@@ -788,6 +769,6 @@ end
 function LoadAnimDict( dict )
     while ( not HasAnimDictLoaded( dict ) ) do
         RequestAnimDict( dict )
-        Citizen.Wait( 5 )
+        Wait( 5 )
     end
 end
